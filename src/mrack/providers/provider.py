@@ -140,6 +140,10 @@ class Provider:
         for host in success_hosts:
             logger.info(f"{self.dsp_name}: {host}")
 
+        if error_hosts:
+            # Forcing exit code to be an error
+            raise ProvisioningError("Some hosts couldn't be provisioned")
+
         return success_hosts
 
     async def strategy_retry(self, reqs):

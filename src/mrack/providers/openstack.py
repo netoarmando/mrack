@@ -23,7 +23,12 @@ from urllib.parse import parse_qs, urlparse
 from asyncopenstackclient import AuthPassword, GlanceClient
 from simple_rest_client.exceptions import NotFoundError, ServerError
 
-from mrack.errors import ProvisioningError, ServerNotFoundError, ValidationError
+from mrack.errors import (
+    ProviderError,
+    ProvisioningError,
+    ServerNotFoundError,
+    ValidationError,
+)
 from mrack.host import STATUS_ACTIVE, STATUS_DELETED, STATUS_ERROR, STATUS_PROVISIONING
 from mrack.providers.provider import STRATEGY_RETRY, Provider
 from mrack.providers.utils.osapi import ExtraNovaClient, NeutronClient
@@ -376,7 +381,19 @@ class OpenStackProvider(Provider):
         if specs.get("network"):
             del specs["network"]
 
-        response = await self.nova.servers.create(server=specs)
+        error_attempts = 0
+        while True:
+            try:
+                response = await self.nova.servers.create(server=specs)
+            except ServerError as e:
+                logger.debug(e)
+                error_attempts += 1
+                if error_attempts > SERVER_ERROR_RETRY:
+                    raise ProvisioningError(
+                        f"{self.dsp_name}: Fail to create server", specs
+                    )
+            else:
+                break
         return response.get("server")
 
     async def delete_server(self, uuid):
@@ -384,13 +401,21 @@ class OpenStackProvider(Provider):
 
         Doesn't wait for the deletion to happen.
         """
-        try:
-            await self.nova.servers.force_delete(uuid)
-        except NotFoundError:
-            logger.warning(
-                f"{self.dsp_name}: Server '{uuid}' not found, probably already deleted"
-            )
-            pass
+        error_attempts = 0
+        while True:
+            try:
+                await self.nova.servers.force_delete(uuid)
+            except ServerError as e:
+                logger.debug(e)
+                error_attempts += 1
+                if error_attempts > SERVER_ERROR_RETRY:
+                    raise ProviderError(uuid)
+            except NotFoundError:
+                logger.warning(
+                    f"{self.dsp_name}: Server '{uuid}' no found, probably already "
+                    "deleted"
+                )
+                break
 
     async def wait_till_provisioned(
         self, instance, timeout=None, poll_sleep=None, poll_sleep_initial=None

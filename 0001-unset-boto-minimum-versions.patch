@@ -1,0 +1,29 @@
+From 5c0d6554744474412b563f85d1d21b38868db63a Mon Sep 17 00:00:00 2001
+From: Armando Neto <abiagion@redhat.com>
+Date: Thu, 4 Feb 2021 15:12:31 -0300
+Subject: [PATCH] chore: unset boto versions
+
+Unpinning the exact version for boto3 and botocore, in preparation of packaging
+mrack as RPM.
+
+Signed-off-by: Armando Neto <abiagion@redhat.com>
+---
+ requirements.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/requirements.txt b/requirements.txt
+index ab2705f..8f6d6e2 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,6 +1,6 @@
+ beaker-client>=28
+-botocore==1.18.18
+-boto3==1.15.18
++botocore
++boto3
+ click>=7.0.0
+ pyyaml>=5.0.0
+ asyncopenstackclient>=0.8.1
+--
+2.26.2
+
